@@ -5,6 +5,8 @@ import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
@@ -20,11 +22,15 @@ public class DefaultLinkFinder implements LinkFinder {
 	private static final String PROTOCOL_DELIMITER = "://";
 	private static final int PROTOCOL_DELIMITER_LENGTH = PROTOCOL_DELIMITER.length();
 	
+	private final Logger log = LoggerFactory.getLogger(getClass());
+	
 	@Override
 	public List<Link> find(String url) {
 		List<Link> links = new ArrayList<>();
 		try {
 			Document document = Jsoup.connect(url).get();
+			log.info("document: {}", document);
+			
 			Elements elements = document.select("a");
 			for (Element element : elements) {
 				String text = element.text();
