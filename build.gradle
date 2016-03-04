@@ -34,11 +34,12 @@ repositories {
 
 dependencies {
     compile("org.springframework.boot:spring-boot-starter")
-    compile("org.apache.httpcomponents:httpclient")
     
-    compile("org.jsoup:jsoup:1.8.3")
+    compile("org.apache.httpcomponents:httpclient")
 
-    provided("org.projectlombok:lombok:$lombokVersion")
+    compile("org.jsoup:jsoup:$jsoupVersion")
+
+    provided("org.projectlombok:lombok")
 
     testCompile("org.springframework.boot:spring-boot-starter-test")
 }
