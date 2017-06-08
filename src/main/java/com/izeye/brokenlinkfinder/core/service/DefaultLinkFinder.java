@@ -28,7 +28,7 @@ public class DefaultLinkFinder implements LinkFinder {
 	public List<Link> find(String url) {
 		List<Link> links = new ArrayList<>();
 		try {
-			Document document = Jsoup.connect(url).get();
+			Document document = Jsoup.connect(url).maxBodySize(1_000_000_000).get();
 			log.info("document: {}", document);
 			
 			Elements elements = document.select("a");
