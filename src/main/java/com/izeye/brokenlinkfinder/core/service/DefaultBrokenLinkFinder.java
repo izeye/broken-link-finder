@@ -1,19 +1,26 @@
 package com.izeye.brokenlinkfinder.core.service;
 
 import com.izeye.brokenlinkfinder.core.domain.Link;
+
+import lombok.extern.slf4j.Slf4j;
 import org.apache.http.HttpStatus;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 
 /**
- * Created by izeye on 15. 10. 22..
+ * Default {@link BrokenLinkFinder}.
+ *
+ * @author Johnny Lim
  */
 @Service
+@Slf4j
 public class DefaultBrokenLinkFinder implements BrokenLinkFinder {
 	
 	@Autowired
@@ -21,37 +28,41 @@ public class DefaultBrokenLinkFinder implements BrokenLinkFinder {
 	
 	@Autowired
 	private LinkStatusChecker linkStatusChecker;
-	
-	private final Logger log = LoggerFactory.getLogger(getClass());
-	
+
+	private final ExecutorService executor = Executors.newFixedThreadPool(100);
+
 	@Override
 	public List<Link> find(String url) {
-		List<Link> brokenLinks = new ArrayList<>();
-		
-		List<Thread> threads = new ArrayList<>();
-		List<Link> links = linkFinder.find(url);
+		List<Future<?>> futures = new ArrayList<>();
+		List<Link> links = this.linkFinder.find(url);
+		log.info("Total links: {}", links.size());
+
 		for (Link link : links) {
-			Thread thread = new Thread() {
-				@Override
-				public void run() {
-					try {
-						int statusCode = linkStatusChecker.getStatusCode(link.getUrl());
-						link.setStatusCode(statusCode);
-					} catch (Throwable ex) {
-						log.error("Unexpected exception.", ex);
-					}
+			Future<?> future = this.executor.submit(() -> {
+				try {
+					int statusCode = this.linkStatusChecker.getStatusCode(link.getUrl());
+					link.setStatusCode(statusCode);
 				}
-			};
-			threads.add(thread);
-			thread.start();
+				catch (Throwable ex) {
+					log.error("Unexpected exception.", ex);
+				}
+			});
+			futures.add(future);
 		}
-		for (Thread thread : threads) {
+
+		for (Future<?> future : futures) {
 			try {
-				thread.join();
-			} catch (InterruptedException ex) {
+				future.get();
+			}
+			catch (InterruptedException ex) {
+				log.error("Unexpected exception.", ex);
+			}
+			catch (ExecutionException ex) {
 				log.error("Unexpected exception.", ex);
 			}
 		}
+
+		List<Link> brokenLinks = new ArrayList<>();
 		for (Link link : links) {
 			Integer statusCode = link.getStatusCode();
 			if (statusCode == null || statusCode != HttpStatus.SC_OK) {
